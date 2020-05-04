@@ -5,13 +5,11 @@
  * correct entrypoint via our router.
  */
 
-import './webcomponents-config'; // must go before -loader below
-import '@webcomponents/webcomponentsjs/webcomponents-loader.js';
 import {swapContent, getPartial} from './loader';
 import * as router from './utils/router';
 import {store} from './store';
 
-WebComponents.waitFor(async () => {
+function initialize() {
   // TODO(samthor): This isn't quite the right class name because not all Web Components are ready
   // at this point due to code-splitting.
   document.body.classList.remove('unresolved');
@@ -29,7 +27,8 @@ WebComponents.waitFor(async () => {
       router.reload();
     }
   });
-});
+}
+initialize();
 
 if ('serviceWorker' in navigator) {
   if (serviceWorkerIsSupported(window.location.hostname)) {
