@@ -26,6 +26,7 @@ const rollupPluginPostCSS = require('rollup-plugin-postcss');
 const rollupPluginVirtual = require('rollup-plugin-virtual');
 const rollupPluginReplace = require('rollup-plugin-replace');
 const rollupPluginIstanbul = require('rollup-plugin-istanbul');
+const rollupPluginLitCSS = require('./src/build/rollup-plugin-lit-css.js')
 const OMT = require('@surma/rollup-plugin-off-main-thread');
 const rollup = require('rollup');
 const terser = isProd ? require('terser') : null;
@@ -61,6 +62,7 @@ const virtualImports = {
 };
 
 const defaultPlugins = [
+  rollupPluginLitCSS,
   rollupPluginNodeResolve(),
   rollupPluginCJS({
     include: 'node_modules/**',
@@ -257,6 +259,7 @@ async function buildTest() {
   const testBundle = await rollup.rollup({
     input: 'test/unit/src/lib/index.js',
     plugins: [
+      rollupPluginLitCSS,
       rollupPluginNodeResolve(),
       rollupPluginCJS(),
       rollupPluginVirtual(buildVirtualJSON(virtualImports)),
