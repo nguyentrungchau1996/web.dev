@@ -920,6 +920,17 @@ const contributors = {
     twitter: 'kkotowicz',
     github: 'koto',
   },
+  dgrogan: {
+    name: {
+      given: 'David',
+      family: 'Grogan',
+    },
+    country: 'US',
+    github: 'davidsgrogan',
+    org: {
+      name: 'Google',
+    },
+  },
   ulan: {
     name: {
       given: 'Ulan',
@@ -931,6 +942,14 @@ const contributors = {
       name: 'Google',
       unit: 'Chrome',
     },
+  },
+  domenic: {
+    name: {
+      given: 'Domenic',
+      family: 'Denicola',
+    },
+    twitter: 'domenic',
+    github: 'domenic',
   },
 };
 

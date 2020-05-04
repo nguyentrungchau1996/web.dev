@@ -42,6 +42,11 @@ process.on('unhandledRejection', (reason, p) => {
  * Virtual imports made available to all bundles. Used for site config and globals.
  */
 const virtualImports = {
+  webdev_analytics: {
+    id: isProd ? site.analytics.ids.prod : site.analytics.ids.staging,
+    dimensions: site.analytics.dimensions,
+    version: site.analytics.version,
+  },
   webdev_config: {
     isProd,
     env: process.env.ELEVENTY_ENV || 'dev',
@@ -130,7 +135,6 @@ function disallowExternal(source, importer, isResolved) {
  * to build the Service Worker.
  */
 async function build() {
-  const generated = [];
   const postcssConfig = {};
   if (isProd) {
     // nb. Only require() autoprefixer when used.
@@ -149,6 +153,17 @@ async function build() {
     input: 'src/lib/bootstrap.js',
     external: disallowExternal,
     plugins: [rollupPluginPostCSS(postcssConfig), ...defaultPlugins],
+    manualChunks: (id) => {
+      // lit-html/lit-element is our biggest dependency, and is always used
+      // together. Return it in its own chunk (~30kb after Terser).
+      if (/\/node_modules\/lit-.*\//.exec(id)) {
+        return 'lit';
+      }
+      // Algolia is smaller (~17kb after Terser).
+      if (id.includes('/node_modules/algoliasearch/')) {
+        return 'algolia';
+      }
+    },
   });
   const appGenerated = await appBundle.write({
     dynamicImportFunction: 'window._import',
@@ -156,14 +171,31 @@ async function build() {
     dir: 'dist',
     format: 'esm',
   });
-  for (const {fileName} of appGenerated.output) {
-    generated.push(fileName);
+  const outputFiles = appGenerated.output.map(({fileName}) => fileName);
+
+  // Rollup basic to generate the top-level script run by all browsers (even ancient ones). This is
+  // just for Analytics.
+  const pageviewBundle = await rollup.rollup({
+    input: 'src/lib/pageview.js',
+    plugins: defaultPlugins,
+    external: disallowExternal,
+  });
+  const pageviewGenerated = await pageviewBundle.write({
+    sourcemap: true,
+    dir: 'dist',
+    format: 'iife',
+  });
+  if (pageviewGenerated.output.length !== 1) {
+    throw new Error(
+      `pageview generated more than one file: ${pageviewGenerated.output.length}`,
+    );
   }
+  outputFiles.push(pageviewGenerated.output[0].fileName);
 
   // Compress the generated source here, as we need the final files and hashes for the Service
   // Worker manifest.
   if (isProd) {
-    await compressOutput(generated);
+    await compressOutput(outputFiles);
   }
 
   // We don't generate a manifest in dev, so Workbox doesn't do a default cache step.
@@ -179,8 +211,8 @@ async function build() {
     manualChunks: (id) => {
       const chunkNames = ['idb-keyval', 'virtual', 'workbox'];
       for (const chunkName of chunkNames) {
-        if (id.includes(chunkName)) {
-          return chunkName;
+        if (id.includes(`/node_modules/${chunkName}/`)) {
+          return 'sw-' + chunkName;
         }
       }
     },
@@ -203,21 +235,19 @@ async function build() {
     ],
   });
 
-  const {output} = await swBundle.write({
+  const swGenerated = await swBundle.write({
     sourcemap: true,
     dir: 'dist',
     format: 'amd',
   });
 
-  for (const swOutput of output) {
-    const {fileName} = swOutput;
-    if (isProd) {
-      await compressOutput([fileName]);
-    }
-    generated.push(fileName);
+  const swOutputFiles = swGenerated.output.map(({fileName}) => fileName);
+  if (isProd) {
+    await compressOutput(swOutputFiles);
   }
+  outputFiles.push(...swOutputFiles);
 
-  return generated.length;
+  return outputFiles.length;
 }
 
 /**
