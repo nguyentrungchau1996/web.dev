@@ -122,6 +122,7 @@
     "unist-util-map": "^1.0.5",
     "unist-util-to-list-of-char": "^0.1.2",
     "unist-util-visit": "^1.4.1",
+    "web-vitals": "^0.2.0",
     "workbox-build": "^5.1.2",
     "workbox-cacheable-response": "^5.1.2",
     "workbox-expiration": "^5.1.2",
